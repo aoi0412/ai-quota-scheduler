@@ -34,6 +34,9 @@ class SchedulerConfig:
     job_command: tuple[str, ...] = ("harness2",)
     adapters: tuple[str, ...] = ("claude_usage_api", "claude_statusline")
     usage_api_url: str = ""
+    usage_api_token_file: str = ""
+    usage_api_headers: tuple[str, ...] = ()
+    codex_sessions_dir: Path = Path("~/.codex/sessions").expanduser()
 
     def __post_init__(self) -> None:
         if not QUANTILE_MIN <= self.quantile <= QUANTILE_MAX:

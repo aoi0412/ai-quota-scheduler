@@ -39,3 +39,5 @@ def registered_adapters() -> list[str]:
 
 # Built-in adapters register themselves on import.
 from ai_quota_scheduler.adapters import claude_statusline as _claude_statusline  # noqa: E402,F401
+from ai_quota_scheduler.adapters import claude_usage_api as _claude_usage_api  # noqa: E402,F401
+from ai_quota_scheduler.adapters import codex_log as _codex_log  # noqa: E402,F401

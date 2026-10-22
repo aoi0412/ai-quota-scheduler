@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
 from ai_quota_scheduler.models import Decision, QuotaSnapshot, WindowState
 
-__all__ = ["Store"]
+__all__ = ["JOB_STATES", "Store"]
+
+JOB_STATES = ("queued", "running", "done", "failed", "exited")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS snapshots (
@@ -27,6 +30,13 @@ CREATE TABLE IF NOT EXISTS harness_usage (
     tokens INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS harness_usage_at ON harness_usage (at);
+CREATE TABLE IF NOT EXISTS jobs (
+    seq INTEGER PRIMARY KEY,
+    job_id TEXT NOT NULL UNIQUE,
+    args TEXT NOT NULL,
+    state TEXT NOT NULL,
+    pid INTEGER
+);
 CREATE TABLE IF NOT EXISTS decisions (
     id INTEGER PRIMARY KEY,
     at REAL NOT NULL,
@@ -142,3 +152,42 @@ class Store:
         if not row:
             return None
         return Decision(_dt(row[0]), row[1], row[2], json.loads(row[3]))
+
+    def enqueue(self, job_id: str, args: Sequence[str]) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO jobs (job_id, args, state, pid) VALUES (?, ?, 'queued', NULL)",
+                (job_id, json.dumps(list(args))),
+            )
+
+    def next_queued(self) -> tuple[str, list[str]] | None:
+        row = self._conn.execute(
+            "SELECT job_id, args FROM jobs WHERE state = 'queued' ORDER BY seq LIMIT 1"
+        ).fetchone()
+        return (row[0], json.loads(row[1])) if row else None
+
+    def set_job_state(self, job_id: str, state: str, pid: int | None) -> None:
+        if state not in JOB_STATES:
+            raise ValueError(f"unknown job state: {state}")
+        with self._conn:
+            cur = self._conn.execute(
+                "UPDATE jobs SET state = ?, pid = ? WHERE job_id = ?", (state, pid, job_id)
+            )
+        if cur.rowcount != 1:
+            raise KeyError(f"unknown job: {job_id}")
+
+    def job_state(self, job_id: str) -> str | None:
+        row = self._conn.execute("SELECT state FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
+        return row[0] if row else None
+
+    def running_jobs(self) -> list[tuple[str, int]]:
+        rows = self._conn.execute(
+            "SELECT job_id, pid FROM jobs WHERE state = 'running' ORDER BY seq"
+        ).fetchall()
+        return [(r[0], r[1]) for r in rows]
+
+    def list_jobs(self) -> list[dict[str, object]]:
+        rows = self._conn.execute("SELECT job_id, args, state, pid FROM jobs ORDER BY seq").fetchall()
+        return [
+            {"job_id": r[0], "args": json.loads(r[1]), "state": r[2], "pid": r[3]} for r in rows
+        ]

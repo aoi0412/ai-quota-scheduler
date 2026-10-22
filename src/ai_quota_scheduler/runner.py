@@ -78,6 +78,9 @@ class Runner:
     def job_log(self, job_id: str) -> Path:
         return self.job_dir(job_id) / JOB_LOG
 
+    def active_logs(self) -> list[Path]:
+        return [self.job_log(job_id) for job_id, _ in self.store.running_jobs()]
+
     def reconcile(self) -> None:
         """On startup: adopt jobs still alive, fail the ones that died meanwhile."""
         for job_id, pid in self.store.running_jobs():

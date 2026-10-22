@@ -30,6 +30,12 @@ CREATE TABLE IF NOT EXISTS harness_usage (
     tokens INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS harness_usage_at ON harness_usage (at);
+CREATE TABLE IF NOT EXISTS user_usage (
+    id INTEGER PRIMARY KEY,
+    at REAL NOT NULL,
+    pct REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS user_usage_at ON user_usage (at);
 CREATE TABLE IF NOT EXISTS jobs (
     seq INTEGER PRIMARY KEY,
     job_id TEXT NOT NULL UNIQUE,
@@ -137,6 +143,18 @@ class Store:
             (_ts(start), _ts(end)),
         ).fetchone()
         return int(row[0])
+
+    def add_user_usage(self, at: datetime, pct: float) -> None:
+        with self._conn:
+            self._conn.execute("INSERT INTO user_usage (at, pct) VALUES (?, ?)", (_ts(at), pct))
+
+    def user_usage_between(self, start: datetime, end: datetime) -> list[tuple[datetime, float]]:
+        """Estimated user usage samples with ``start <= at < end``, oldest first."""
+        rows = self._conn.execute(
+            "SELECT at, pct FROM user_usage WHERE at >= ? AND at < ? ORDER BY at, id",
+            (_ts(start), _ts(end)),
+        ).fetchall()
+        return [(_dt(r[0]), r[1]) for r in rows]
 
     def add_decision(self, d: Decision) -> None:
         with self._conn:

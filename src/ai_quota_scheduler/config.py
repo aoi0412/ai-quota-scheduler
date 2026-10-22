@@ -29,6 +29,7 @@ class SchedulerConfig:
     stale_after_s: int = 900
     r_init_pct_per_min: float = 0.05
     rollout_max_min: int = 60
+    timezone: str = "Asia/Tokyo"
     db_path: Path = _STATE_DIR / "aqs.db"
     state_dir: Path = _STATE_DIR
     harness_config_dir: Path = _CONFIG_DIR / "claude"

@@ -23,3 +23,13 @@ def write_toml(dir_: Path, values: dict[str, Any]) -> Path:
 @pytest.fixture
 def toml_writer():
     return write_toml
+
+
+def default_cfg(tmp: Path | None = None, **overrides: Any):
+    from ai_quota_scheduler.config import SchedulerConfig
+
+    if tmp is not None:
+        overrides.setdefault("state_dir", tmp)
+        overrides.setdefault("db_path", tmp / "aqs.db")
+        overrides.setdefault("harness_config_dir", tmp / "claude")
+    return SchedulerConfig(**overrides)

@@ -11,35 +11,21 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Self
+from typing import Self
 
 from ai_quota_scheduler.adapters import register_adapter
 from ai_quota_scheduler.config import SchedulerConfig
+from ai_quota_scheduler.fileio import atomic_write_json
 from ai_quota_scheduler.models import FIVE_HOUR, SEVEN_DAY, QuotaSnapshot, WindowState
 
-__all__ = ["SNAPSHOT_FILENAME", "ClaudeStatuslineAdapter", "atomic_write_json", "statusline_hook"]
+__all__ = ["SNAPSHOT_FILENAME", "ClaudeStatuslineAdapter", "statusline_hook"]
 
 log = logging.getLogger(__name__)
 
 SNAPSHOT_FILENAME = "claude_statusline.json"
 WINDOW_MINUTES = {FIVE_HOUR: 300, SEVEN_DAY: 10080}
-
-
-def atomic_write_json(path: Path, data: Any) -> None:
-    """Write ``data`` to ``path`` via a temp file and rename."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(data, f)
-        os.replace(tmp, path)
-    except BaseException:
-        Path(tmp).unlink(missing_ok=True)
-        raise
 
 
 def statusline_hook(stdin_json: str, out_path: Path) -> None:

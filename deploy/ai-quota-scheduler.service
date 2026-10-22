@@ -1,0 +1,15 @@
+[Unit]
+Description=ai-quota-scheduler: run harness2 on leftover Claude quota
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/aqs daemon --config %h/.config/ai-quota-scheduler/config.toml
+Restart=on-failure
+RestartSec=30
+# Jobs run in their own session; on restart the daemon adopts them instead of
+# killing them (Runner.reconcile). Only the daemon process is stopped.
+KillMode=process
+
+[Install]
+WantedBy=default.target
